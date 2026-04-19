@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+import os
+import sys
+
+def generate_script():
+    # Detect current environment
+    current_full_path = os.getcwd()
+    current_dir_name = os.path.basename(current_full_path)
+    user_name = os.getlogin()
+
+    print(f"--- Ultron Job Generator [Dir: {current_dir_name}] ---")
+    
+    # 1. Inputs
+    job_name = input(f"Job Name [{current_dir_name}]: ") or current_dir_name
+    py_file = input("Python Script Name (e.g., train.py): ")
+    model_name = input("Output Model Name (Enter to skip): ").strip()
+    
+    # 2. Resources (Defaulting to G for Gigabytes to avoid OOM)
+    cpus = input("CPUs [8]: ") or "8"
+    mem = input("RAM (include unit, e.g., 16G) [32G]: ") or "32G"
+    gpu = input("GPUs [1]: ") or "1"
+    
+    # 3. Dataset
+    has_dataset = input("Include NFS dataset? (y/n): ").lower() == 'y'
+    nfs_path = input("NFS Source Path: ") if has_dataset else ""
+
+    # 4. Path Logic
+    local_scratch = f"/scratch/{user_name}/{current_dir_name}"
+    
+    # 5. Handle Model Sync Line dynamically
+    if model_name:
+        model_sync_line = f"scp $LOCAL_SCRATCH/{model_name} {user_name}@$REMOTE_HOST:$REMOTE_PATH/"
+    else:
+        model_sync_line = "# No model file specified to sync back"
+
+    # 6. Construct Script Content
+    script_content = f"""#!/bin/bash
+#SBATCH --job-name={job_name}
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task={cpus}
+#SBATCH --mem={mem}
+#SBATCH --gres=gpu:{gpu}
+#SBATCH --chdir={local_scratch}
+#SBATCH --output={local_scratch}/logs/job_%j.log
+#SBATCH --error={local_scratch}/logs/job_%j.err
+
+# Standard Ultron Paths
+REMOTE_HOST="head01"
+REMOTE_PATH="{current_full_path}"
+LOCAL_SCRATCH="{local_scratch}"
+
+# a. Initialize Scratch Space
+mkdir -p $LOCAL_SCRATCH/logs
+
+# b. Sync code from headnode
+echo "Syncing code from $REMOTE_PATH..."
+scp -r {user_name}@$REMOTE_HOST:$REMOTE_PATH/* $LOCAL_SCRATCH/
+
+"""
+    if has_dataset:
+        script_content += f"""# c. Sync Dataset from NFS
+echo "Syncing dataset..."
+rsync -ah --progress {nfs_path}/ $LOCAL_SCRATCH/data/
+"""
+
+    script_content += f"""
+# d. Environment and Run
+source /opt/ultron/miniforge3/etc/profile.d/conda.sh
+conda activate ai_base
+
+python3 {py_file}
+
+# e. Sync results back to headnode
+{model_sync_line}
+scp -r $LOCAL_SCRATCH/logs {user_name}@$REMOTE_HOST:$REMOTE_PATH/
+"""
+
+    # 7. Write and finalize
+    file_name = f"submit_{job_name}.sh"
+    with open(file_name, "w") as f:
+        f.write(script_content)
+    
+    os.chmod(file_name, 0o755)
+    print(f"\n✅ Created {file_name} in {current_full_path}")
+    print(f"👉 To run: sbatch {file_name}")
+
+if __name__ == "__main__":
+    generate_script()
