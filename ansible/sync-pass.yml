@@ -1,0 +1,27 @@
+---
+- name: Synchronize User Passwords from Head01 to Cluster
+  hosts: all
+  become: yes
+  vars:
+    cluster_users:
+      - "HIBA"
+      # Add other usernames here as needed
+
+  tasks:
+    - name: Get current password hashes from head01
+      shell: "getent shadow {{ item }} | cut -d: -f2"
+      register: head_hashes
+      delegate_to: head01
+      loop: "{{ cluster_users }}"
+      run_once: true
+      changed_when: false
+
+    - name: Apply hashes to all other nodes
+      user:
+        name: "{{ item.0 }}"
+        password: "{{ item.1.stdout }}"
+      # item.0 is the username, item.1 is the result of the shell task
+      loop: "{{ cluster_users | zip(head_hashes.results) | list }}"
+      # Don't run this on head01 since it's the source
+      when: inventory_hostname != 'head01'
+
