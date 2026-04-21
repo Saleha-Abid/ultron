@@ -1,0 +1,31 @@
+---
+- name: Cleanup and Undo User Management (Retaining Group)
+  hosts: all
+  become: yes
+  vars:
+    cluster_users:
+      - "Ayesha"
+      - "testuser"
+
+  tasks:
+    - name: Force kill all processes for the cluster users
+      shell: "pkill -u {{ item }} || true"
+      loop: "{{ cluster_users }}"
+      ignore_errors: yes
+
+    - name: Remove user directories from /data and /scratch
+      file:
+        path: "{{ item[1] }}/{{ item[0] }}"
+        state: absent
+      with_nested:
+        - "{{ cluster_users }}"
+        - [ '/data', '/scratch' ]
+
+    - name: Remove cluster users and their home directories
+      user:
+        name: "{{ item }}"
+        state: absent
+        remove: yes  # Deletes /home/username
+        force: yes   # Forces removal even if logged in
+      loop: "{{ cluster_users }}"
+
