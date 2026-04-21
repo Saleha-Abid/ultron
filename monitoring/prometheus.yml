@@ -31,3 +31,8 @@ scrape_configs:
     static_configs:
       - targets: ['head01:6817']
 
+  - job_name: 'gpu-metrics'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['node01:9400', 'node02:9400']
+
