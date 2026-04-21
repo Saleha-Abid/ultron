@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'ultron-nodes'
+    static_configs:
+      - targets: ['head01:9100', 'head02:9100', 'node01:9100', 'node02:9100']
+
+  - job_name: 'slurm-nodes'
+    metrics_path: '/metrics/nodes'
+    static_configs:
+      - targets: ['head01:6817']
+
+  - job_name: 'slurm-jobs'
+    metrics_path: '/metrics/jobs'
+    static_configs:
+      - targets: ['head01:6817']
+
+  - job_name: 'slurm-partitions'
+    metrics_path: '/metrics/partitions'
+    static_configs:
+      - targets: ['head01:6817']
+
+  - job_name: 'slurm-accounts'
+    metrics_path: '/metrics/jobs-users-accts'
+    static_configs:
+      - targets: ['head01:6817']
+
+  - job_name: 'slurm-scheduler'
+    metrics_path: '/metrics/scheduler'
+    static_configs:
+      - targets: ['head01:6817']
+
