@@ -24,6 +24,6 @@ done
 /bin/mount /dev/drbd0 /data
 
 # 3. Start NFS
-/bin/systemctl start nfs-kernel-server
-systemctl start lsyncd
+/bin/systemctl start nfs-kernel-server #Comment these for now
+systemctl start lsyncd #Comment these for now
 
