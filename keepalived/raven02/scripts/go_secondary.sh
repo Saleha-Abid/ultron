@@ -17,8 +17,8 @@ if /sbin/drbdadm status r0 | grep -q "connection:"; then
 fi
 
 # 1. Stop NFS first to release file locks
-systemctl stop nfs-kernel-server
-systemctl stop lsyncd
+systemctl stop nfs-kernel-server #comment these out for now
+systemctl stop lsyncd #comment these out for now
 
 # Now proceed with umount and secondary...
 # 2. Unmount safely
